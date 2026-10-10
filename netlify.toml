@@ -1,0 +1,51 @@
+[build]
+  functions = "netlify/functions"
+  publish = "public"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[[redirects]]
+  from = "/bot"
+  to = "/.netlify/functions/bot"
+  status = 200
+
+[[redirects]]
+  from = "/api/favorite"
+  to = "/.netlify/functions/favorite"
+  status = 200
+
+[[redirects]]
+  from = "/api/bot-info"
+  to = "/.netlify/functions/bot-info"
+  status = 200
+
+[[redirects]]
+  from = "/api/file"
+  to = "/.netlify/functions/file"
+  status = 200
+
+[[redirects]]
+  from = "/api/send-file"
+  to = "/.netlify/functions/send-file"
+  status = 200
+
+[[redirects]]
+  from = "/api/suggestions"
+  to = "/.netlify/functions/suggestions"
+  status = 200
+
+[[redirects]]
+  from = "/api/track-download"
+  to = "/.netlify/functions/track-download"
+  status = 200
+
+[[redirects]]
+  from = "/api/image"
+  to = "/.netlify/functions/image"
+  status = 200
+
+[[redirects]]
+  from = "/api/check-ban"
+  to = "/.netlify/functions/check-ban"
+  status = 200

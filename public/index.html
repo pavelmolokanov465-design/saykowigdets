@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SaykoWidgets</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #000000;
+    --panel: #121212;
+    --panel-2: #1A1A1A;
+    --line: #262626;
+    --text: #F3F3F1;
+    --sub: #8A8A8F;
+    --accent: #B6FF3C;
+    --nav-bg: rgba(18,18,18,.92);
+    --radius: 20px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{margin:0; padding:0; background:var(--bg); color:var(--text); font-family:'JetBrains Mono', monospace; overflow-x:hidden; transition:background .25s ease, color .25s ease;}
+  h1,h2,h3,.display{font-family:'Unbounded', sans-serif;}
+  button{font-family:inherit; cursor:pointer;}
+
+  @keyframes fadeSlideIn{ from{opacity:0; transform:translateY(14px);} to{opacity:1; transform:translateY(0);} }
+  @keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }
+  @keyframes favPop{ 0%{transform:scale(1);} 45%{transform:scale(1.4);} 100%{transform:scale(1);} }
+  @keyframes spin{ from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+  @keyframes tabPulse{ 0%{transform:scale(1);} 50%{transform:scale(.93);} 100%{transform:scale(1);} }
+
+  .ban-screen{
+    position:fixed; inset:0; z-index:9999; background:var(--bg);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:40px 30px;
+  }
+  .ban-icon{font-size:52px; margin-bottom:18px;}
+  .ban-title{font-family:'Unbounded'; font-size:20px; font-weight:700; margin-bottom:14px;}
+  .ban-reason{font-size:13px; color:var(--sub); line-height:1.5; max-width:320px; margin-bottom:8px;}
+  .ban-until{font-size:11.5px; color:var(--sub); opacity:.7;}
+
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 20px 14px; position:sticky; top:0; z-index:30;
+    background:linear-gradient(var(--bg) 80%, transparent);
+    animation:fadeSlideIn .4s ease both;
+  }
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand-mark{
+    width:34px; height:34px; border-radius:10px; background: var(--accent);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Unbounded'; font-weight:800; font-size:13px; color:#000; flex-shrink:0;
+  }
+  .brand-name{font-weight:700; font-size:19px; letter-spacing:-0.02em;}
+  .menu-btn{
+    width:38px; height:38px; border-radius:11px; background:var(--panel);
+    border:1px solid var(--line); display:flex; align-items:center; justify-content:center; position:relative;
+    transition:transform .15s ease, background .25s ease, border-color .25s ease;
+  }
+  .menu-btn:active{transform:scale(.88) rotate(-6deg);}
+  .menu-btn svg{width:16px; height:16px; pointer-events:none; stroke:var(--text);}
+
+  /* ---------- bottom sheet menu ---------- */
+  .sheet-backdrop{
+    position:fixed; inset:0; z-index:50; background:rgba(0,0,0,.6);
+    opacity:0; pointer-events:none; transition:opacity .25s ease;
+  }
+  .sheet-backdrop.open{opacity:1; pointer-events:auto;}
+
+  .sheet{
+    position:fixed; left:0; right:0; bottom:0; z-index:51;
+    background:var(--panel); border:1px solid var(--line); border-bottom:none;
+    border-radius:24px 24px 0 0; padding:10px 20px calc(22px + env(safe-area-inset-bottom));
+    transform:translateY(100%); transition:transform .3s cubic-bezier(.32,.72,0,1), background .25s ease, border-color .25s ease;
+    max-height:80vh; overflow-y:auto;
+  }
+  .sheet.open{transform:translateY(0);}
+  #adminMenuBackdrop{z-index:70;}
+  #adminMenuSheet{z-index:71;}
+
+  .sheet-handle{
+    width:36px; height:4px; border-radius:100px; background:var(--line);
+    margin:0 auto 18px;
+  }
+  .sheet-header{display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:20px;}
+  .sheet-brand{display:flex; align-items:center; gap:10px;}
+  .sheet-brand .brand-mark{width:38px; height:38px; font-size:14px;}
+  .sheet-brand-name{font-family:'Unbounded'; font-weight:800; font-size:16px;}
+  .sheet-brand-sub{font-size:11px; color:var(--sub); margin-top:2px;}
+
+  .sheet-controls{display:flex; align-items:center; gap:8px; flex-shrink:0;}
+  .lang-pill{
+    display:flex; align-items:center; gap:6px; padding:8px 12px; border-radius:100px;
+    background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    font-size:12px; font-weight:600; transition:transform .15s ease, background .2s ease;
+  }
+  .lang-pill:active{transform:scale(.92);}
+  .lang-pill svg{width:14px; height:14px; color:var(--sub); pointer-events:none;}
+
+  .sheet-links{border:1px solid var(--line); border-radius:16px; overflow:hidden; margin-bottom:14px;}
+  .sheet-links a{
+    display:flex; align-items:center; gap:12px; padding:15px 16px;
+    color:var(--text); text-decoration:none; font-size:13.5px; font-weight:500;
+    border-bottom:1px solid var(--line); background:var(--panel-2);
+    transition:background .15s ease, transform .15s ease;
+  }
+  .sheet-links a:active{transform:scale(.98);}
+  .sheet-links a:last-child{border-bottom:none;}
+  .sheet-links .ico{
+    width:34px; height:34px; border-radius:10px; background:rgba(182,255,60,.14);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    transition:transform .15s ease;
+  }
+  .sheet-links a:active .ico{transform:scale(1.1) rotate(-4deg);}
+  .sheet-links .ico svg{width:16px; height:16px; color:var(--accent);}
+  .sheet-links .arrow{margin-left:auto; color:var(--sub);}
+  .sheet-links .arrow svg{width:14px; height:14px;}
+
+  .sheet-close{
+    width:100%; padding:14px; border-radius:14px; background:var(--panel-2);
+    border:1px solid var(--line); color:var(--sub); font-size:13px; font-weight:600;
+    text-align:center; transition:transform .15s ease, background .2s ease;
+  }
+  .sheet-close:active{transform:scale(.96);}
+
+  .credit-watermark{
+    position:fixed; left:0; right:0; bottom:78px; z-index:20;
+    text-align:center; font-size:10px; color:var(--sub); opacity:.4; letter-spacing:.02em;
+    pointer-events:none;
+  }
+
+  .hero{padding:6px 20px 22px; animation:fadeSlideIn .45s ease .05s both;}
+  .eyebrow{
+    font-size:11px; letter-spacing:.14em; color:var(--accent);
+    text-transform:uppercase; margin-bottom:10px; font-weight:600;
+  }
+  .hero h1{font-size:34px; line-height:1.04; font-weight:800; letter-spacing:-0.03em; margin:0 0 12px;}
+  .hero h1 span{color:var(--sub);}
+  .hero p{font-family:'JetBrains Mono'; font-size:13.5px; line-height:1.55; color:var(--sub); margin:0; max-width:480px;}
+
+  .tabs-wrap{padding:4px 0 18px; position:sticky; top:70px; z-index:15; background:var(--bg); transition:background .25s ease;}
+  .tabs{display:flex; gap:8px; padding:0 20px; overflow-x:auto; scrollbar-width:none;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{
+    flex:0 0 auto; padding:9px 16px; border-radius:100px; font-size:13px;
+    border:1px solid var(--line); background:var(--panel); color:var(--sub);
+    font-weight:500; display:flex; align-items:center; gap:6px; white-space:nowrap;
+    transition:background .2s ease, color .2s ease, border-color .2s ease, transform .15s ease;
+  }
+  .tab:active{transform:scale(.93);}
+  .tab.active{background:var(--accent); color:#000; border-color:var(--accent); font-weight:600; animation:tabPulse .3s ease;}
+
+  .lock-howto{padding:0 20px 16px;}
+  .lock-howto-btn{
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    width:100%; padding:13px 16px; border-radius:14px; text-align:center;
+    background:var(--accent); color:#000; text-decoration:none;
+    font-family:'Unbounded'; font-size:13px; font-weight:700; letter-spacing:-0.01em;
+    transition:transform .15s ease;
+  }
+  .lock-howto-btn:active{transform:scale(.97);}
+  .lock-howto-sub{font-family:'JetBrains Mono'; font-size:10px; font-weight:500; opacity:.65; text-transform:uppercase; letter-spacing:.02em;}
+
+  .section-label{display:flex; align-items:baseline; justify-content:space-between; padding:0 20px 12px; margin-top:4px;}
+  .section-label h2{font-size:18px; font-weight:700; letter-spacing:-0.02em; margin:0;}
+
+  .search-wrap{padding:0 20px 14px;}
+  .search-box{
+    display:flex; align-items:center; gap:8px; padding:11px 14px; border-radius:14px;
+    background:var(--panel); border:1px solid var(--line); transition:border-color .2s ease;
+  }
+  .search-box:focus-within{border-color:var(--accent);}
+  .search-box svg{width:16px; height:16px; color:var(--sub); flex-shrink:0;}
+  .search-box input{
+    flex:1; min-width:0; border:none; outline:none; background:transparent; color:var(--text);
+    font-family:'JetBrains Mono', monospace; font-size:13.5px;
+  }
+  .search-box input::placeholder{color:var(--sub);}
+  .search-clear{
+    width:20px; height:20px; border-radius:50%; background:var(--panel-2); border:none;
+    display:none; align-items:center; justify-content:center; flex-shrink:0; color:var(--sub);
+  }
+  .search-clear svg{width:11px; height:11px; pointer-events:none;}
+  .search-box.has-value .search-clear{display:flex;}
+
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:0 20px 26px;}
+  .skeleton-card{
+    aspect-ratio:1/1.35; border-radius:var(--radius); background:var(--panel);
+    border:1px solid var(--line); position:relative; overflow:hidden;
+  }
+  .skeleton-card::after{
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,.06), transparent);
+    animation:skeletonShine 1.3s ease-in-out infinite;
+  }
+  @keyframes skeletonShine{ 0%{transform:translateX(-100%);} 100%{transform:translateX(100%);} }
+
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    overflow:hidden; display:flex; flex-direction:column;
+    animation:fadeSlideIn .4s ease both;
+    transition:transform .18s ease, border-color .2s ease, background .25s ease;
+  }
+  .card:active{transform:scale(.97);}
+  .grid .card:nth-child(1){animation-delay:.02s;}
+  .grid .card:nth-child(2){animation-delay:.07s;}
+  .grid .card:nth-child(3){animation-delay:.12s;}
+  .grid .card:nth-child(4){animation-delay:.17s;}
+  .grid .card:nth-child(5){animation-delay:.22s;}
+  .grid .card:nth-child(6){animation-delay:.27s;}
+  .grid .card:nth-child(n+7){animation-delay:.3s;}
+  .thumb{aspect-ratio:1/1; background:var(--panel-2); display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;}
+  .thumb-bg{
+    position:absolute; inset:0; background-size:cover; background-position:center;
+    filter:blur(22px) brightness(.65) saturate(1.15); transform:scale(1.25);
+  }
+  .thumb-inner{position:absolute; inset:10px; z-index:1;}
+  .thumb img{width:100%; height:100%; object-fit:contain; display:block; border-radius:12px;}
+  .badge{
+    position:absolute; top:8px; left:8px; background:rgba(0,0,0,.75); z-index:2;
+    border:1px solid var(--line); border-radius:7px; padding:3px 7px; font-size:9.5px; color:var(--accent); letter-spacing:.03em;
+  }
+  .rank{
+    position:absolute; top:8px; right:8px; background:var(--accent); color:#000; z-index:2;
+    border-radius:7px; padding:3px 7px; font-family:'Unbounded'; font-size:11px; font-weight:800;
+  }
+  .fav-btn{
+    position:absolute; bottom:8px; right:8px; width:28px; height:28px; border-radius:8px; z-index:2;
+    background:rgba(0,0,0,.65); border:1px solid var(--line); display:flex; align-items:center; justify-content:center;
+    transition:transform .15s ease, background .2s ease;
+  }
+  .fav-btn:active{transform:scale(.85);}
+  .fav-btn svg{width:14px; height:14px; stroke:var(--text); fill:none; pointer-events:none; transition:stroke .2s ease, fill .2s ease;}
+  .fav-btn.active svg{fill:var(--accent); stroke:var(--accent); animation:favPop .35s ease;}
+
+  .card-body{padding:12px 12px 14px; display:flex; flex-direction:column; gap:6px; flex:1;}
+  .card-title{font-family:'Unbounded'; font-size:13px; font-weight:700; letter-spacing:-0.01em; line-height:1.25;}
+  .card-desc{font-size:11px; color:var(--sub); line-height:1.4; flex:1;}
+  .card-desc a{color:inherit; text-decoration:underline;}
+  .card-foot{display:flex; align-items:center; justify-content:space-between; margin-top:4px;}
+  .dl-count{
+    display:flex; align-items:center; gap:4px; font-size:10.5px; color:var(--sub);
+    font-weight:500;
+  }
+  .dl-count svg{width:12px; height:12px; flex-shrink:0;}
+  .file-size{margin-left:6px; padding-left:6px; border-left:1px solid var(--sub); opacity:.7;}
+  .dl-btn{
+    width:30px; height:30px; border-radius:9px; background:var(--accent);
+    display:flex; align-items:center; justify-content:center; border:none; flex-shrink:0;
+    transition:transform .15s ease, opacity .2s ease;
+  }
+  .dl-btn:active{transform:scale(.85);}
+  .dl-btn:disabled{opacity:.5;}
+  .dl-btn.loading svg{animation:spin .7s linear infinite;}
+  .dl-btn svg{width:14px; height:14px; pointer-events:none;}
+
+  .empty{margin:0 20px; padding:40px 20px; text-align:center; background:var(--panel); border:1px dashed var(--line); border-radius:var(--radius); animation:fadeSlideIn .4s ease both;}
+  .empty .ico{font-size:26px; margin-bottom:10px;}
+  .empty h3{font-size:15px; margin:0 0 6px; font-weight:700;}
+  .empty p{font-size:12.5px; color:var(--sub); margin:0; line-height:1.5;}
+
+  .profile-card{
+    margin:0 20px 16px; background:var(--panel); border:1px solid var(--line);
+    border-radius:var(--radius); padding:20px; display:flex; align-items:center; gap:14px;
+    animation:fadeSlideIn .4s ease both;
+  }
+  .avatar{
+    width:52px; height:52px; border-radius:14px; background:var(--panel-2);
+    border:1px solid var(--line); display:flex; align-items:center; justify-content:center;
+    font-family:'Unbounded'; font-weight:700; font-size:16px; flex-shrink:0; overflow:hidden;
+  }
+  .avatar img{width:100%; height:100%; object-fit:cover;}
+  .profile-name{font-family:'Unbounded'; font-weight:700; font-size:15px;}
+  .profile-sub{font-size:11.5px; color:var(--sub); margin-top:3px;}
+  .profile-row{
+    display:flex; justify-content:space-between; align-items:center; padding:14px 20px;
+    margin:0 20px 1px; background:var(--panel); border:1px solid var(--line); font-size:12.5px;
+    animation:fadeSlideIn .4s ease .08s both;
+  }
+  .profile-row:first-of-type{border-radius:16px 16px 0 0; border-bottom:none;}
+  .profile-row:last-of-type{border-radius:0 0 16px 16px;}
+
+  .suggest-btn{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    margin:16px 20px 6px; padding:14px; border-radius:14px;
+    background:var(--accent); color:#000; text-decoration:none;
+    font-family:'Unbounded'; font-weight:700; font-size:12.5px;
+    transition:transform .15s ease;
+  }
+  .suggest-btn:active{transform:scale(.97);}
+  .suggest-btn svg{width:15px; height:15px; flex-shrink:0;}
+  .suggest-hint{
+    text-align:center; font-size:10.5px; color:var(--sub); padding:0 30px; line-height:1.4;
+  }
+  .profile-row span:first-child{color:var(--sub);}
+
+  /* ---------- Предложка: встроенный блок в профиле ---------- */
+  .inline-suggest{
+    margin:16px 20px 6px; border-radius:16px; background:var(--panel); border:1px solid var(--line);
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  .inline-suggest-head{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:13px 14px; border-bottom:1px solid var(--line); flex-shrink:0;
+    font-family:'Unbounded'; font-size:12.5px; font-weight:700; letter-spacing:-0.01em;
+  }
+  .inline-suggest-messages{
+    max-height:280px; min-height:90px; padding:12px 12px;
+  }
+  .inline-suggest .suggest-input-row{border-top:1px solid var(--line); padding:10px 12px;}
+  .inline-suggest .suggest-banner{margin:10px 12px 0;}
+
+  /* ---------- Предложка: чат-оверлей ---------- */
+  .suggest-overlay{
+    position:fixed; inset:0; z-index:60; background:var(--bg);
+    display:flex; flex-direction:column; transform:translateX(100%);
+    transition:transform .28s cubic-bezier(.4,0,.2,1); pointer-events:none;
+  }
+  .suggest-overlay.open{transform:translateX(0); pointer-events:auto;}
+  .suggest-panel{display:flex; flex-direction:column; height:100%;}
+  .suggest-panel-head{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:16px 14px; border-bottom:1px solid var(--line); flex-shrink:0;
+    padding-top:calc(16px + env(safe-area-inset-top));
+  }
+  .suggest-back, .suggest-trash{
+    width:34px; height:34px; border-radius:10px; background:var(--panel); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center; color:var(--text); flex-shrink:0;
+    transition:transform .15s ease;
+  }
+  .suggest-back:active, .suggest-trash:active{transform:scale(.88);}
+  .suggest-back svg, .suggest-trash svg{width:16px; height:16px; pointer-events:none;}
+  .suggest-panel-title{font-family:'Unbounded'; font-size:14px; font-weight:700; flex:1; text-align:center; letter-spacing:-0.01em;}
+  .suggest-banner{
+    margin:10px 14px 0; padding:10px 12px; border-radius:12px; background:rgba(255,92,92,.12);
+    border:1px solid rgba(255,92,92,.35); color:#ff8080; font-size:11px; line-height:1.4; flex-shrink:0;
+  }
+  .suggest-messages{flex:1; overflow-y:auto; padding:16px 14px; display:flex; flex-direction:column; gap:10px;}
+  .msg-row{display:flex;}
+  .msg-row.mine{justify-content:flex-end;}
+  .msg-bubble{
+    max-width:78%; padding:10px 13px; border-radius:15px; font-size:12.5px; line-height:1.45;
+    background:var(--panel); border:1px solid var(--line); white-space:pre-wrap; word-break:break-word;
+  }
+  .msg-row.mine .msg-bubble{background:var(--accent); color:#000; border-color:var(--accent); border-bottom-right-radius:4px;}
+  .msg-row:not(.mine) .msg-bubble{border-bottom-left-radius:4px;}
+  .msg-time{font-size:9px; opacity:.55; margin-top:4px; text-align:right;}
+  .suggest-empty{margin:auto; text-align:center; color:var(--sub); font-size:12px; padding:0 30px;}
+  .suggest-input-row{
+    display:flex; gap:8px; padding:12px 14px; border-top:1px solid var(--line); flex-shrink:0;
+    padding-bottom:calc(12px + env(safe-area-inset-bottom));
+  }
+  .suggest-input-row input{
+    flex:1; background:var(--panel); border:1px solid var(--line); border-radius:13px; padding:11px 14px;
+    color:var(--text); font-family:inherit; font-size:12.5px; outline:none;
+  }
+  .suggest-send{
+    width:42px; height:42px; border-radius:13px; background:var(--accent); border:none; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; transition:transform .15s ease;
+  }
+  .suggest-send:active{transform:scale(.9);}
+  .suggest-send:disabled{opacity:.5;}
+  .suggest-send svg{width:16px; height:16px; pointer-events:none;}
+
+  /* ---------- Предложка: список чатов у админа ---------- */
+  .admin-chat-list{flex:1; overflow-y:auto; padding:10px 14px;}
+  .admin-chat-item{
+    display:flex; align-items:center; gap:11px; padding:12px 10px; border-radius:14px;
+    margin-bottom:6px; background:var(--panel); border:1px solid var(--line); text-align:left; width:100%;
+    transition:transform .15s ease; color:var(--text);
+  }
+  .admin-chat-item:active{transform:scale(.98);}
+  .admin-chat-avatar{
+    width:38px; height:38px; border-radius:11px; background:var(--panel-2); flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-family:'Unbounded'; font-weight:700; font-size:14px;
+  }
+  .admin-chat-info{flex:1; min-width:0;}
+  .admin-chat-name{font-size:12.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .admin-chat-id{font-size:10px; color:var(--sub); margin-top:2px;}
+  .admin-chat-flags{display:flex; gap:4px; flex-shrink:0; align-items:center;}
+  .admin-chat-flag{font-size:13px;}
+  .admin-chat-dot{width:9px; height:9px; border-radius:50%; background:#ff3b3b; flex-shrink:0;}
+
+  /* ---------- меню действий админа ---------- */
+  .admin-menu-item{
+    display:flex; align-items:center; gap:10px; width:100%; padding:14px 16px; border-radius:14px;
+    background:var(--panel); border:1px solid var(--line); color:var(--text); font-size:13px; font-weight:500;
+    margin-bottom:8px; transition:transform .15s ease;
+  }
+  .admin-menu-item:active{transform:scale(.97);}
+  .admin-menu-item.danger{color:#ff5c5c; border-color:rgba(255,92,92,.35);}
+
+  .view{display:none; opacity:0; transform:translateY(10px); transition:opacity .22s ease, transform .22s ease;}
+  .view.active{display:block; opacity:1; transform:translateY(0);}
+
+  .bottomnav{
+    position:fixed; left:0; right:0; bottom:0; z-index:25;
+    background:var(--nav-bg); backdrop-filter:blur(14px); border-top:1px solid var(--line);
+    display:flex; padding:10px 10px calc(10px + env(safe-area-inset-bottom));
+    transition:background .25s ease, border-color .25s ease;
+  }
+  .nav-item{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;
+    color:var(--sub); font-size:10px; font-weight:500; background:none; border:none;
+    transition:color .2s ease, transform .15s ease; position:relative;
+  }
+  .nav-item:active{transform:scale(.88);}
+  .nav-item.active{color:var(--accent);}
+  .nav-item svg{width:19px; height:19px; pointer-events:none; transition:transform .2s ease;}
+  .nav-item.active svg{transform:translateY(-2px) scale(1.08);}
+  .nav-dot{
+    position:absolute; top:-2px; right:calc(50% - 16px); width:8px; height:8px;
+    border-radius:50%; background:#ff3b3b; border:2px solid var(--bg);
+  }
+
+  .spacer-bottom{height:110px;}
+</style>
+</head>
+<body>
+
+  <div class="ban-screen" id="banScreen" style="display:none">
+    <div class="ban-icon">🚫</div>
+    <div class="ban-title" id="banTitle">Доступ ограничен</div>
+    <div class="ban-reason" id="banReason"></div>
+    <div class="ban-until" id="banUntil"></div>
+  </div>
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">SW</div>
+      <div class="brand-name">SaykoWidgets</div>
+    </div>
+    <div class="menu-btn" id="menuBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+    </div>
+  </div>
+
+  <div class="view active" id="view-catalog">
+    <div class="hero">
+      <div class="eyebrow" data-i18n="catalogEyebrow">KWGT · Каталог виджетов</div>
+      <h1 id="catalogTitle">Виджеты для<br><span>твоего рабочего стола.</span></h1>
+      <p data-i18n="catalogDesc">Скачивай готовые KWGT-виджеты. Часы, погода, экран блокировки — всё в одном боте.</p>
+    </div>
+    <div class="search-wrap">
+      <div class="search-box" id="searchBox">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="text" id="searchInput" data-i18n-placeholder="searchPlaceholder" placeholder="Поиск виджетов...">
+        <button class="search-clear" id="searchClear" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="tabs-wrap">
+      <div class="tabs">
+        <div class="tab active" data-cat="all" data-i18n="tabAll">Все</div>
+        <div class="tab" data-cat="clock" data-i18n="tabClock">🕐 Часы</div>
+        <div class="tab" data-cat="weather" data-i18n="tabWeather">☁️ Погода</div>
+        <div class="tab" data-cat="search" data-i18n="tabSearch">🔍Поисковая строка</div>
+        <div class="tab" data-cat="lock" data-i18n="tabLock">🔒 Экран блокировки</div>
+        <div class="tab" data-cat="other" data-i18n="tabOther">✦ Прочие</div>
+      </div>
+    </div>
+    <div class="lock-howto" id="lockHowto" style="display:none">
+      <a class="lock-howto-btn" id="lockHowtoBtn" href="https://www.tiktok.com/t/ZP8G7Knfg/" target="_blank" rel="noopener">
+        <span data-i18n="lockHowtoTitle">Как поставить виджет на экран блокировки</span>
+        <span class="lock-howto-sub" data-i18n="lockHowtoSub">только на Samsung</span>
+      </a>
+    </div>
+    <div class="section-label"><h2 data-i18n="newUploads">Новые загрузки</h2></div>
+    <div class="grid" id="catalogGrid">
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+    </div>
+  </div>
+
+  <div class="view" id="view-top">
+    <div class="hero">
+      <div class="eyebrow" data-i18n="topEyebrow">Рейтинг</div>
+      <h1 id="topTitle">Топ виджетов<br><span>по скачиваниям.</span></h1>
+      <p data-i18n="topDesc">Считается по реальным скачиваниям из бота.</p>
+    </div>
+    <div class="section-label"><h2 data-i18n="leaders">Лидеры</h2></div>
+    <div class="grid" id="topGrid"></div>
+  </div>
+
+  <div class="view" id="view-favorites">
+    <div class="hero">
+      <div class="eyebrow" data-i18n="favEyebrow">Избранное</div>
+      <h1 id="favTitle">Сохранённые<br><span>виджеты.</span></h1>
+      <p data-i18n="favDesc">Нажимай ★ на карточке виджета, чтобы сохранить его сюда.</p>
+    </div>
+    <div class="grid" id="favGrid"></div>
+  </div>
+
+  <div class="view" id="view-profile">
+    <div class="hero"><div class="eyebrow" data-i18n="profileEyebrow">Профиль</div><h1 data-i18n="profileTitle">Твой аккаунт</h1></div>
+    <div class="profile-card">
+      <div class="avatar" id="profileAvatar">🙂</div>
+      <div>
+        <div class="profile-name" id="profileName">—</div>
+        <div class="profile-sub" id="profileId">—</div>
+      </div>
+    </div>
+    <div class="profile-row"><span data-i18n="inFavorites">В избранном</span><span id="profileFavCount">—</span></div>
+
+    <button class="suggest-btn" id="openAdminListBtn" type="button" style="display:none; background:var(--panel); color:var(--text); border:1px solid var(--line);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      <span data-i18n="adminAllSuggestions">Все предложения</span>
+      <span class="nav-dot" id="adminListDot" style="display:none; position:static; margin-left:2px;"></span>
+    </button>
+
+    <!-- ---------- Предложка: встроенный чат прямо в профиле ---------- -->
+    <div class="inline-suggest" id="inlineSuggest">
+      <div class="inline-suggest-head">
+        <span data-i18n="suggestBoxTitle">Предложка</span>
+        <button class="suggest-trash" id="suggestDeleteBtn" type="button" title="Удалить чат">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>
+        </button>
+      </div>
+      <div class="suggest-banner" id="suggestBanner" style="display:none"></div>
+      <div class="suggest-messages inline-suggest-messages" id="suggestMessages"></div>
+      <div class="suggest-input-row">
+        <input type="text" id="suggestInput" data-i18n-placeholder="suggestPlaceholder" placeholder="Предложите свою идею" maxlength="2000">
+        <button class="suggest-send" id="suggestSendBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <a class="suggest-btn" href="https://t.me/anslept" target="_blank">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      <span data-i18n="suggestWidget">Предложить свой KWGT файл</span>
+    </a>
+    <div class="suggest-hint" data-i18n="suggestHint">Пожалуйста, присылайте файл со скрином</div>
+  </div>
+
+  <!-- ---------- Предложка: список чатов у админа ---------- -->
+  <div class="suggest-overlay" id="adminListOverlay">
+    <div class="suggest-panel">
+      <div class="suggest-panel-head">
+        <button class="suggest-back" id="adminListCloseBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="suggest-panel-title" data-i18n="suggestBoxTitle">Предложка</div>
+        <div style="width:34px"></div>
+      </div>
+      <div class="admin-chat-list" id="adminChatList"></div>
+    </div>
+  </div>
+
+  <!-- ---------- Предложка: переписка у админа ---------- -->
+  <div class="suggest-overlay" id="adminChatOverlay">
+    <div class="suggest-panel">
+      <div class="suggest-panel-head">
+        <button class="suggest-back" id="adminChatBackBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div class="suggest-panel-title" id="adminChatTitle">—</div>
+        <button class="suggest-trash" id="adminMenuBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
+        </button>
+      </div>
+      <div class="suggest-banner" id="adminChatBanner" style="display:none"></div>
+      <div class="suggest-messages" id="adminChatMessages"></div>
+      <div class="suggest-input-row">
+        <input type="text" id="adminReplyInput" data-i18n-placeholder="suggestPlaceholder" placeholder="Ответить..." maxlength="2000">
+        <button class="suggest-send" id="adminReplySendBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet-backdrop" id="adminMenuBackdrop"></div>
+  <div class="sheet" id="adminMenuSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-links">
+      <button class="admin-menu-item" data-mute="1">🔇 Мут на 1 час</button>
+      <button class="admin-menu-item" data-mute="6">🔇 Мут на 6 часов</button>
+      <button class="admin-menu-item" data-mute="24">🔇 Мут на 24 часа</button>
+      <button class="admin-menu-item" data-mute="168">🔇 Мут на 7 дней</button>
+      <button class="admin-menu-item" id="adminUnmuteBtn">🔊 Снять мут</button>
+      <button class="admin-menu-item" id="adminBanBtn">⛔ Заблокировать предложку</button>
+      <button class="admin-menu-item" id="adminUnbanBtn">✅ Разблокировать предложку</button>
+      <button class="admin-menu-item danger" id="adminDeleteChatBtn">🗑 Удалить чат</button>
+    </div>
+    <button class="sheet-close" id="adminMenuCloseBtn">Закрыть</button>
+  </div>
+
+  <div class="spacer-bottom"></div>
+
+  <div class="credit-watermark">by @anslept</div>
+
+  <div class="sheet-backdrop" id="sheetBackdrop"></div>
+  <div class="sheet" id="sheet">
+    <div class="sheet-handle"></div>
+
+    <div class="sheet-header">
+      <div class="sheet-brand">
+        <div class="brand-mark">SW</div>
+        <div>
+          <div class="sheet-brand-name">SaykoWidgets</div>
+          <div class="sheet-brand-sub" data-i18n="brandSub">Каталог KWGT-виджетов</div>
+        </div>
+      </div>
+      <div class="sheet-controls">
+        <button class="lang-pill" id="langBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 4 6 4 9s-1.5 6.4-4 9c-2.5-2.6-4-6-4-9s1.5-6.4 4-9z"/></svg>
+          <span id="langLabel">RU</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="sheet-links">
+      <a href="https://t.me/saykoteeech" target="_blank">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L4 20l1-4.5A8.5 8.5 0 1 1 21 11.5z"/></svg></div>
+        <span data-i18n="channelAuthor">Канал автора</span>
+        <span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span>
+      </a>
+      <a href="https://t.me/sayko_chaaat" target="_blank">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.4-4 8-9 8-1.2 0-2.4-.2-3.4-.6L3 21l1.7-4.3C4.3 15.6 4 13.9 4 12c0-4.4 4-8 9-8s8 3.6 8 8z"/></svg></div>
+        <span data-i18n="chatAuthor">Чат автора</span>
+        <span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span>
+      </a>
+      <a href="https://t.me/saykoteeech/187" target="_blank">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 18h6"/><path d="M12 6v6l3 2"/></svg></div>
+        <span data-i18n="installKwgt">Установить KWGT</span>
+        <span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></span>
+      </a>
+    </div>
+    <button class="sheet-close" id="sheetClose" data-i18n="close">Закрыть</button>
+  </div>
+
+  <div class="bottomnav">
+    <button class="nav-item active" data-view="catalog">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      <span data-i18n="navCatalog">Каталог</span>
+    </button>
+    <button class="nav-item" data-view="top">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+      <span data-i18n="navTop">Топ</span>
+    </button>
+    <button class="nav-item" data-view="favorites">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17.3l-5.4 3.2 1.4-6.1-4.7-4.1 6.2-.5L12 4l2.5 5.8 6.2.5-4.7 4.1 1.4 6.1z"/></svg>
+      <span data-i18n="navFav">Избранное</span>
+    </button>
+    <button class="nav-item" data-view="profile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+      <span data-i18n="navProfile">Профиль</span>
+      <span class="nav-dot" id="navProfileDot" style="display:none"></span>
+    </button>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+    const tg = window.Telegram && window.Telegram.WebApp;
+    if (tg) tg.ready();
+    const tgUser = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user : null;
+    const USER_ID = tgUser ? tgUser.id : null;
+    const INIT_DATA = tg && tg.initData ? tg.initData : '';
+
+    const sb = window.supabase.createClient(window.SAYKO_CONFIG.SUPABASE_URL, window.SAYKO_CONFIG.SUPABASE_ANON_KEY);
+
+    let BOT_USERNAME = null;
+    async function loadBotUsername() {
+      try {
+        const res = await fetch('/api/bot-info');
+        const data = await res.json();
+        if (data.ok) BOT_USERNAME = data.username;
+      } catch (e) { /* кнопка скачивания попробует ещё раз при следующем клике */ }
+    }
+
+    // ==================== ЯЗЫК ====================
+    const I18N = {
+      ru: {
+        catalogEyebrow: 'KWGT · Каталог виджетов',
+        catalogTitle: 'Виджеты для<br><span>твоего рабочего стола.</span>',
+        catalogDesc: 'Скачивай готовые KWGT-виджеты. Часы, погода, экран блокировки — всё в одном боте.',
+        tabAll: 'Все', tabClock: '🕐 Часы', tabWeather: '☁️ Погода', tabSearch: '🔍Поисковая строка', tabLock: '🔒 Экран блокировки', tabOther: '✦ Прочие',
+        lockHowtoTitle: 'Как поставить виджет на экран блокировки', lockHowtoSub: 'только на Samsung',
+        newUploads: 'Новые загрузки',
+        topEyebrow: 'Рейтинг',
+        topTitle: 'Топ виджетов<br><span>по скачиваниям.</span>',
+        topDesc: 'Считается по реальным скачиваниям из бота.',
+        leaders: 'Лидеры',
+        favEyebrow: 'Избранное',
+        favTitle: 'Сохранённые<br><span>виджеты.</span>',
+        favDesc: 'Нажимай ★ на карточке виджета, чтобы сохранить его сюда.',
+        profileEyebrow: 'Профиль', profileTitle: 'Твой аккаунт', inFavorites: 'В избранном',
+        suggestWidget: 'Предложить свой KWGT файл',
+        suggestHint: 'Пожалуйста, присылайте файл со скрином',
+        openSuggestBox: 'Предложка',
+        suggestBoxTitle: 'Предложка',
+        suggestPlaceholder: 'Предложите свою идею',
+        suggestEmpty: 'Пока сообщений нет. Напиши первым!',
+        suggestMuted: 'Вам временно ограничена отправка сообщений до',
+        suggestBanned: 'Отправка сообщений в предложку для вас заблокирована.',
+        suggestSendFailed: 'Не получилось отправить, попробуй ещё раз.',
+        suggestDeleteConfirm: 'Удалить всю переписку?',
+        adminChatEmpty: 'Пока нет предложений от пользователей.',
+        adminAllSuggestions: 'Все предложения',
+        navCatalog: 'Каталог', navTop: 'Топ', navFav: 'Избранное', navProfile: 'Профиль',
+        brandSub: 'Каталог KWGT-виджетов',
+        channelAuthor: 'Канал автора', chatAuthor: 'Чат автора', installKwgt: 'Установить KWGT', close: 'Закрыть',
+        emptyTitle: 'Пока пусто',
+        emptyCategory: 'В этой категории пока нет виджетов.',
+        emptyLoadFailed: 'Не удалось загрузить каталог. Проверь интернет и попробуй снова.',
+        banTitle: 'Доступ ограничен',
+        banReasonPrefix: 'Причина: ',
+        banUntilPrefix: 'До: ',
+        emptyTop: 'Пока нет виджетов для рейтинга.',
+        emptyFav: 'Отмечай виджеты звёздочкой, чтобы они появились здесь.',
+        emptySearch: 'Ничего не найдено. Попробуй другой запрос.',
+        searchPlaceholder: 'Поиск виджетов...',
+        guest: 'Гость',
+        catBadge: { clock: 'ЧАСЫ', weather: 'ПОГОДА', search: 'ПОИСК', lock: 'LOCKSCREEN', other: 'ПРОЧИЕ' },
+        alertOpenViaBot: 'Открой каталог через кнопку в боте Telegram — иначе избранное не работает.',
+        alertFileNotFound: 'Файл не найден, попробуй позже.',
+        alertNetworkError: 'Что-то пошло не так. Проверь интернет-соединение и попробуй ещё раз.',
+        alertDownloadFailed: 'Не получилось открыть файл. Попробуй ещё раз чуть позже.',
+      },
+      en: {
+        catalogEyebrow: 'KWGT · Widget catalog',
+        catalogTitle: 'Widgets for<br><span>your home screen.</span>',
+        catalogDesc: 'Download ready-made KWGT widgets. Clocks, weather, lock screen — all in one bot.',
+        tabAll: 'All', tabClock: '🕐 Clocks', tabWeather: '☁️ Weather', tabSearch: '🔍Search bar', tabLock: '🔒 Lock screen', tabOther: '✦ Other',
+        lockHowtoTitle: 'How to set a widget on the lock screen', lockHowtoSub: 'Samsung only',
+        newUploads: 'New uploads',
+        topEyebrow: 'Ranking',
+        topTitle: 'Top widgets<br><span>by downloads.</span>',
+        topDesc: 'Based on real downloads from the bot.',
+        leaders: 'Leaders',
+        favEyebrow: 'Favorites',
+        favTitle: 'Saved<br><span>widgets.</span>',
+        favDesc: 'Tap ★ on a widget card to save it here.',
+        profileEyebrow: 'Profile', profileTitle: 'Your account', inFavorites: 'In favorites',
+        suggestWidget: 'Suggest your KWGT file',
+        suggestHint: 'Please send the file together with a screenshot',
+        openSuggestBox: 'Suggestions',
+        suggestBoxTitle: 'Suggestions',
+        suggestPlaceholder: 'Share your idea',
+        suggestEmpty: 'No messages yet. Be the first to write!',
+        suggestMuted: 'You are temporarily muted until',
+        suggestBanned: 'Sending messages here is blocked for you.',
+        suggestSendFailed: 'Could not send, please try again.',
+        suggestDeleteConfirm: 'Delete the whole conversation?',
+        adminChatEmpty: 'No suggestions from users yet.',
+        adminAllSuggestions: 'All suggestions',
+        navCatalog: 'Catalog', navTop: 'Top', navFav: 'Favorites', navProfile: 'Profile',
+        brandSub: 'KWGT widget catalog',
+        channelAuthor: 'Author channel', chatAuthor: 'Author chat', installKwgt: 'Install KWGT', close: 'Close',
+        emptyTitle: 'Nothing here yet',
+        emptyCategory: 'No widgets in this category yet.',
+        emptyLoadFailed: 'Could not load the catalog. Check your connection and try again.',
+        banTitle: 'Access restricted',
+        banReasonPrefix: 'Reason: ',
+        banUntilPrefix: 'Until: ',
+        emptyTop: 'No widgets for the ranking yet.',
+        emptyFav: 'Tap the star on a widget card to save it here.',
+        emptySearch: 'Nothing found. Try a different search.',
+        searchPlaceholder: 'Search widgets...',
+        guest: 'Guest',
+        catBadge: { clock: 'CLOCK', weather: 'WEATHER', search: 'SEARCH', lock: 'LOCKSCREEN', other: 'OTHER' },
+        alertOpenViaBot: 'Open the catalog via the button in the Telegram bot — otherwise favorites won\'t work.',
+        alertFileNotFound: 'File not found, try again later.',
+        alertNetworkError: 'Something went wrong. Check your connection and try again.',
+        alertDownloadFailed: 'Could not open the file. Please try again in a bit.',
+      },
+    };
+
+    let LANG = localStorage.getItem('sayko_lang') || 'ru';
+    function t(key) { return (I18N[LANG] && I18N[LANG][key]) || I18N.ru[key] || key; }
+
+    function applyLanguage() {
+      document.documentElement.lang = LANG;
+      document.getElementById('langLabel').textContent = LANG.toUpperCase();
+
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        el.textContent = t(el.dataset.i18n);
+      });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        el.placeholder = t(el.dataset.i18nPlaceholder);
+      });
+      document.getElementById('catalogTitle').innerHTML = t('catalogTitle');
+      document.getElementById('topTitle').innerHTML = t('topTitle');
+      document.getElementById('favTitle').innerHTML = t('favTitle');
+
+      // тексты, которые зависят от языка, но генерируются в JS
+      renderCatalog(currentCatFilter);
+      renderTop();
+      renderFavorites();
+      renderProfile();
+    }
+
+    document.getElementById('langBtn').addEventListener('click', () => {
+      LANG = LANG === 'ru' ? 'en' : 'ru';
+      localStorage.setItem('sayko_lang', LANG);
+      applyLanguage();
+    });
+
+    let currentCatFilter = 'all';
+    let searchQuery = '';
+
+    let allWidgets = [];
+    let favoriteIds = new Set();
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    function formatDescription(str) {
+      if (!str) return '';
+      let text = escapeHtml(str);
+      // ссылки вида https://... или t.me/...
+      text = text.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+      text = text.replace(/(^|[\s(])(t\.me\/[^\s<]+)/g, '$1<a href="https://$2" target="_blank" rel="noopener">$2</a>');
+      // @username -> ссылка на телеграм-профиль (но не трогаем уже вставленные href-ссылки выше)
+      text = text.replace(/(^|[\s(])@([a-zA-Z0-9_]{5,32})(?![^<]*>)/g, '$1<a href="https://t.me/$2" target="_blank" rel="noopener">@$2</a>');
+      return text;
+    }
+
+    function formatFileSize(bytes) {
+      if (!bytes || bytes <= 0) return '';
+      if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} КБ`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
+    }
+
+    function emptyState(text) {
+      return `<div class="empty" style="grid-column:1/-1"><div class="ico">☆</div><h3>${t('emptyTitle')}</h3><p>${text}</p></div>`;
+    }
+
+    function cardHtml(w, opts = {}) {
+      const isFav = favoriteIds.has(w.id);
+      const catLabel = t('catBadge')[w.category] || '';
+      return `
+        <div class="card" data-cat="${w.category}">
+          <div class="thumb">
+            <div class="thumb-bg" style="background-image:url('/api/image?id=${w.id}')"></div>
+            <div class="thumb-inner"><img src="/api/image?id=${w.id}" alt="${w.title}" loading="lazy"></div>
+            ${opts.rank ? `<div class="rank">#${opts.rank}</div>` : `<div class="badge">${catLabel}</div>`}
+            <button class="fav-btn ${isFav ? 'active' : ''}" data-id="${w.id}">
+              <svg viewBox="0 0 24 24" stroke-width="2"><path d="M12 17.3l-5.4 3.2 1.4-6.1-4.7-4.1 6.2-.5L12 4l2.5 5.8 6.2.5-4.7 4.1 1.4 6.1z"/></svg>
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="card-title">${w.title}</div>
+            <div class="card-desc">${formatDescription(w.description)}</div>
+            <div class="card-foot">
+              <div class="dl-count">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10"/><path d="M7 10l5 5 5-5"/><path d="M5 19h14"/></svg>
+                ${w.downloads_count || 0}
+                ${w.file_size ? `<span class="file-size">${formatFileSize(w.file_size)}</span>` : ''}
+              </div>
+              <button class="dl-btn" data-id="${w.id}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="M6 12l6 6 6-6"/><path d="M5 20h14"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function bindDlButtons(container) {
+      container.querySelectorAll('.dl-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const widget = allWidgets.find(w => w.id === btn.dataset.id);
+          if (!widget) {
+            const message = t('alertFileNotFound');
+            if (tg && tg.showAlert) tg.showAlert(message); else alert(message);
+            return;
+          }
+
+          // счётчик скачиваний — отдельным лёгким запросом, не блокирует открытие файла;
+          // сама ссылка на файл теперь без user_id, чтобы CDN-кеш работал одинаково для всех
+          if (USER_ID) {
+            fetch('/api/track-download', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ user_id: USER_ID, widget_id: widget.id }),
+            }).catch(() => {});
+          }
+
+          const link = `${window.location.origin}/api/file?id=${widget.id}`;
+          try {
+            if (tg && tg.openLink) {
+              tg.openLink(link);
+            } else {
+              window.open(link, '_blank');
+            }
+          } catch (e) {
+            const message = t('alertDownloadFailed');
+            if (tg && tg.showAlert) tg.showAlert(message); else alert(message);
+          }
+        });
+      });
+    }
+
+    function bindFavButtons(container) {
+      container.querySelectorAll('.fav-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!USER_ID) {
+            const message = t('alertOpenViaBot');
+            if (tg && tg.showAlert) tg.showAlert(message); else alert(message);
+            return;
+          }
+          const id = btn.dataset.id;
+          const active = !favoriteIds.has(id);
+          if (active) favoriteIds.add(id); else favoriteIds.delete(id);
+          document.querySelectorAll(`.fav-btn[data-id="${id}"]`).forEach(b => b.classList.toggle('active', active));
+          try {
+            const res = await fetch('/api/favorite', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ user_id: USER_ID, widget_id: id, action: active ? 'add' : 'remove' }),
+            });
+            if (!res.ok) throw new Error('bad status');
+          } catch (e) {
+            // откатываем оптимистичное изменение, раз сервер не подтвердил
+            if (active) favoriteIds.delete(id); else favoriteIds.add(id);
+            document.querySelectorAll(`.fav-btn[data-id="${id}"]`).forEach(b => b.classList.toggle('active', !active));
+            const message = t('alertNetworkError');
+            if (tg && tg.showAlert) tg.showAlert(message); else alert(message);
+            return;
+          }
+          if (document.getElementById('view-favorites').classList.contains('active')) renderFavorites();
+        });
+      });
+    }
+
+    function renderCatalog(filterCat = 'all') {
+      currentCatFilter = filterCat;
+      const lockHowto = document.getElementById('lockHowto');
+      if (lockHowto) lockHowto.style.display = filterCat === 'lock' ? 'block' : 'none';
+      let list = filterCat === 'all' ? allWidgets : allWidgets.filter(w => w.category === filterCat);
+      const q = searchQuery.trim().toLowerCase();
+      if (q) {
+        list = list.filter(w =>
+          (w.title || '').toLowerCase().includes(q) ||
+          (w.description || '').toLowerCase().includes(q)
+        );
+      }
+      const grid = document.getElementById('catalogGrid');
+      grid.innerHTML = list.length ? list.map(w => cardHtml(w)).join('') : emptyState(q ? t('emptySearch') : t('emptyCategory'));
+      bindFavButtons(grid);
+      bindDlButtons(grid);
+    }
+
+    function renderTop() {
+      const top = [...allWidgets].sort((a, b) => b.downloads_count - a.downloads_count).slice(0, 10);
+      const grid = document.getElementById('topGrid');
+      grid.innerHTML = top.length ? top.map((w, i) => cardHtml(w, { rank: i + 1 })).join('') : emptyState(t('emptyTop'));
+      bindFavButtons(grid);
+      bindDlButtons(grid);
+    }
+
+    function renderFavorites() {
+      const list = allWidgets.filter(w => favoriteIds.has(w.id));
+      const grid = document.getElementById('favGrid');
+      grid.innerHTML = list.length ? list.map(w => cardHtml(w)).join('') : emptyState(t('emptyFav'));
+      bindFavButtons(grid);
+      bindDlButtons(grid);
+    }
+
+    async function loadFavorites() {
+      if (!USER_ID) return;
+      const { data } = await sb.from('favorites').select('widget_id').eq('user_id', USER_ID);
+      favoriteIds = new Set((data || []).map(r => r.widget_id));
+    }
+
+    async function loadWidgets() {
+      const { data } = await sb.from('widgets').select('*').order('created_at', { ascending: false });
+      allWidgets = data || [];
+    }
+
+    function renderProfile() {
+      document.getElementById('profileName').textContent = tgUser ? (tgUser.username ? '@' + tgUser.username : [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ')) : t('guest');
+      document.getElementById('profileId').textContent = USER_ID ? `ID: ${USER_ID}` : '—';
+      document.getElementById('profileFavCount').textContent = favoriteIds.size;
+      if (tgUser && tgUser.photo_url) {
+        document.getElementById('profileAvatar').innerHTML = `<img src="${tgUser.photo_url}">`;
+      }
+    }
+
+    async function init() {
+      if (USER_ID && INIT_DATA) {
+        try {
+          const res = await fetch('/api/check-ban', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ init_data: INIT_DATA }),
+          });
+          const data = await res.json();
+          if (data.banned) {
+            document.getElementById('banScreen').style.display = 'flex';
+            if (data.reason) {
+              document.getElementById('banReason').textContent = t('banReasonPrefix') + data.reason;
+            }
+            if (data.banned_until) {
+              const untilDate = new Date(data.banned_until).toLocaleString(LANG === 'ru' ? 'ru-RU' : 'en-US', {
+                day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+              });
+              document.getElementById('banUntil').textContent = t('banUntilPrefix') + untilDate;
+            }
+            document.getElementById('banTitle').textContent = t('banTitle');
+            return; // дальше каталог вообще не загружаем
+          }
+        } catch (e) {
+          console.error('ban check failed:', e); // если проверка недоступна — не блокируем из-за нашей ошибки
+        }
+      }
+
+      try {
+        await loadWidgets();
+        renderCatalog(currentCatFilter);
+        renderTop();
+        renderFavorites();
+      } catch (e) {
+        console.error('widgets load failed:', e);
+        document.getElementById('catalogGrid').innerHTML = emptyState(t('emptyLoadFailed'));
+      }
+      try {
+        await Promise.all([loadFavorites(), loadBotUsername()]);
+      } catch (e) {
+        console.error('secondary data load failed:', e);
+      }
+      applyLanguage();
+      checkUnreadSuggest();
+      checkAdminStatus();
+    }
+    init();
+
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        renderCatalog(tab.dataset.cat);
+      });
+    });
+
+    const searchInput = document.getElementById('searchInput');
+    const searchBox = document.getElementById('searchBox');
+    const searchClear = document.getElementById('searchClear');
+
+    searchInput.addEventListener('input', () => {
+      searchQuery = searchInput.value;
+      searchBox.classList.toggle('has-value', searchQuery.length > 0);
+      renderCatalog(currentCatFilter);
+    });
+
+    searchClear.addEventListener('click', () => {
+      searchQuery = '';
+      searchInput.value = '';
+      searchBox.classList.remove('has-value');
+      renderCatalog(currentCatFilter);
+      searchInput.focus();
+    });
+
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        item.classList.add('active');
+
+        const next = document.getElementById('view-' + item.dataset.view);
+        document.querySelectorAll('.view').forEach(v => {
+          if (v !== next) {
+            v.classList.remove('active');
+            v.style.display = 'none';
+          }
+        });
+
+        next.style.display = 'block';
+        next.classList.remove('active');
+        void next.offsetHeight; // форсируем reflow, чтобы transition сработал
+        requestAnimationFrame(() => next.classList.add('active'));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        if (item.dataset.view === 'profile' && typeof loadMyChat === 'function' && !isAdminUser) {
+          loadMyChat();
+        }
+      });
+    });
+
+    const menuBtn = document.getElementById('menuBtn');
+    const sheet = document.getElementById('sheet');
+    const sheetBackdrop = document.getElementById('sheetBackdrop');
+    const sheetClose = document.getElementById('sheetClose');
+
+    function openSheet() {
+      sheet.classList.add('open');
+      sheetBackdrop.classList.add('open');
+    }
+    function closeSheet() {
+      sheet.classList.remove('open');
+      sheetBackdrop.classList.remove('open');
+    }
+
+    menuBtn.addEventListener('click', openSheet);
+    sheetClose.addEventListener('click', closeSheet);
+    sheetBackdrop.addEventListener('click', closeSheet);
+
+    // ==================== ПРЕДЛОЖКА ====================
+    let isAdminUser = false; // подтверждается только ответом сервера
+    let adminChats = [];
+    let currentAdminChatId = null;
+
+    async function callSuggestions(action, extra = {}) {
+      let res;
+      try {
+        res = await fetch('/api/suggestions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, init_data: INIT_DATA, ...extra }),
+        });
+      } catch (e) {
+        return { ok: false, status: 0, networkError: true, data: {} };
+      }
+      let data = {};
+      try { data = await res.json(); } catch (e) { /* пусто */ }
+      return { ok: res.ok, status: res.status, data };
+    }
+
+    function escapeHtmlMsg(str) {
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function fmtTime(iso) {
+      const d = new Date(iso);
+      return d.toLocaleString(LANG === 'ru' ? 'ru-RU' : 'en-US', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function renderMessages(container, messages, myRole) {
+      if (!messages.length) {
+        container.innerHTML = `<div class="suggest-empty">${t('suggestEmpty')}</div>`;
+        return;
+      }
+      container.innerHTML = messages.map(m => `
+        <div class="msg-row ${m.sender === myRole ? 'mine' : ''}">
+          <div>
+            <div class="msg-bubble">${escapeHtmlMsg(m.text)}</div>
+            <div class="msg-time">${fmtTime(m.created_at)}</div>
+          </div>
+        </div>
+      `).join('');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    async function checkUnreadSuggest() {
+      if (!USER_ID || !INIT_DATA) return;
+      const { ok, data } = await callSuggestions('has_unread');
+      const dot1 = document.getElementById('navProfileDot');
+      const unread = ok && data.unread;
+      if (dot1) dot1.style.display = unread ? 'block' : 'none';
+    }
+
+    async function checkAdminStatus() {
+      if (!USER_ID || !INIT_DATA) return;
+      const { ok, data } = await callSuggestions('admin_list');
+      const adminBtn = document.getElementById('openAdminListBtn');
+      if (ok) {
+        isAdminUser = true;
+        adminChats = data.chats || [];
+        adminBtn.style.display = 'flex';
+        document.getElementById('inlineSuggest').style.display = 'none';
+        const hasUnread = adminChats.some(c => c.has_unread_for_admin);
+        document.getElementById('adminListDot').style.display = hasUnread ? 'inline-block' : 'none';
+      }
+    }
+
+    // ---------- пользовательский чат (встроен прямо в профиль) ----------
+    const suggestMessages = document.getElementById('suggestMessages');
+    const suggestBanner = document.getElementById('suggestBanner');
+    const suggestInput = document.getElementById('suggestInput');
+    const suggestSendBtn = document.getElementById('suggestSendBtn');
+    let myChatMuted = false;
+    let myChatBanned = false;
+    let myChatLoaded = false;
+
+    async function loadMyChat() {
+      if (!USER_ID || !INIT_DATA) {
+        suggestMessages.innerHTML = `<div class="suggest-empty">${t('alertOpenViaBot')}</div>`;
+        return;
+      }
+      if (!myChatLoaded) suggestMessages.innerHTML = `<div class="suggest-empty">…</div>`;
+      const { ok, data } = await callSuggestions('get_my_chat');
+      if (!ok) {
+        suggestMessages.innerHTML = `<div class="suggest-empty">${t('alertNetworkError')}</div>`;
+        return;
+      }
+      myChatLoaded = true;
+      myChatMuted = !!(data.chat && data.chat.muted_until);
+      myChatBanned = !!(data.chat && data.chat.banned);
+      if (myChatBanned) {
+        suggestBanner.style.display = 'block';
+        suggestBanner.textContent = t('suggestBanned');
+      } else if (myChatMuted) {
+        suggestBanner.style.display = 'block';
+        suggestBanner.textContent = `${t('suggestMuted')} ${fmtTime(data.chat.muted_until)}`;
+      } else {
+        suggestBanner.style.display = 'none';
+      }
+      renderMessages(suggestMessages, data.messages || [], 'user');
+      checkUnreadSuggest();
+    }
+
+    async function sendMyMessage() {
+      const text = suggestInput.value.trim();
+      if (!text || myChatBanned || myChatMuted) return;
+      suggestSendBtn.disabled = true;
+      const { ok, data } = await callSuggestions('send', { text });
+      suggestSendBtn.disabled = false;
+      if (!ok) {
+        if (data.error === 'muted') {
+          myChatMuted = true;
+          suggestBanner.style.display = 'block';
+          suggestBanner.textContent = `${t('suggestMuted')} ${fmtTime(data.muted_until)}`;
+        } else if (data.error === 'banned') {
+          myChatBanned = true;
+          suggestBanner.style.display = 'block';
+          suggestBanner.textContent = t('suggestBanned');
+        } else {
+          if (tg && tg.showAlert) tg.showAlert(t('suggestSendFailed')); else alert(t('suggestSendFailed'));
+        }
+        return;
+      }
+      suggestInput.value = '';
+      loadMyChat();
+    }
+    suggestSendBtn.addEventListener('click', sendMyMessage);
+    suggestInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMyMessage(); });
+
+    document.getElementById('suggestDeleteBtn').addEventListener('click', async () => {
+      if (!USER_ID || !INIT_DATA) return;
+      const confirmed = tg && tg.showConfirm
+        ? await new Promise(r => tg.showConfirm(t('suggestDeleteConfirm'), r))
+        : confirm(t('suggestDeleteConfirm'));
+      if (!confirmed) return;
+      const { ok } = await callSuggestions('delete_my_chat');
+      if (!ok) {
+        if (tg && tg.showAlert) tg.showAlert(t('alertNetworkError')); else alert(t('alertNetworkError'));
+        return;
+      }
+      myChatLoaded = false;
+      loadMyChat();
+      checkUnreadSuggest();
+    });
+
+    // ---------- список чатов у админа ----------
+    const adminListOverlay = document.getElementById('adminListOverlay');
+    const adminChatList = document.getElementById('adminChatList');
+
+    function chatFlags(chat) {
+      let flags = '';
+      if (chat.muted_until && new Date(chat.muted_until).getTime() > Date.now()) flags += '<span class="admin-chat-flag">🔇</span>';
+      if (chat.banned) flags += '<span class="admin-chat-flag">⛔</span>';
+      if (chat.has_unread_for_admin) flags += '<span class="admin-chat-dot"></span>';
+      return flags;
+    }
+
+    async function openAdminList() {
+      adminListOverlay.classList.add('open');
+      adminChatList.innerHTML = `<div class="suggest-empty">…</div>`;
+      const { ok, status, data } = await callSuggestions('admin_list');
+      if (!ok) {
+        if (status === 403) {
+          isAdminUser = false;
+          adminListOverlay.classList.remove('open');
+        } else {
+          adminChatList.innerHTML = `<div class="suggest-empty">${t('alertNetworkError')}</div>`;
+        }
+        return;
+      }
+      isAdminUser = true;
+      adminChats = data.chats || [];
+      if (!adminChats.length) {
+        adminChatList.innerHTML = `<div class="suggest-empty">${t('adminChatEmpty')}</div>`;
+        return;
+      }
+      adminChatList.innerHTML = adminChats.map(c => `
+        <button class="admin-chat-item" data-uid="${c.user_id}">
+          <div class="admin-chat-avatar">${(c.first_name || c.username || '?').slice(0, 1).toUpperCase()}</div>
+          <div class="admin-chat-info">
+            <div class="admin-chat-name">${escapeHtmlMsg(c.username ? '@' + c.username : (c.first_name || c.user_id))}</div>
+            <div class="admin-chat-id">ID: ${c.user_id}</div>
+          </div>
+          <div class="admin-chat-flags">${chatFlags(c)}</div>
+        </button>
+      `).join('');
+      adminChatList.querySelectorAll('.admin-chat-item').forEach(btn => {
+        btn.addEventListener('click', () => openAdminChat(Number(btn.dataset.uid)));
+      });
+    }
+
+    // ---------- переписка у админа ----------
+    const adminChatOverlay = document.getElementById('adminChatOverlay');
+    const adminChatMessages = document.getElementById('adminChatMessages');
+    const adminChatBanner = document.getElementById('adminChatBanner');
+    const adminChatTitle = document.getElementById('adminChatTitle');
+    const adminReplyInput = document.getElementById('adminReplyInput');
+    const adminReplySendBtn = document.getElementById('adminReplySendBtn');
+
+    async function openAdminChat(uid) {
+      currentAdminChatId = uid;
+      adminChatOverlay.classList.add('open');
+      adminChatMessages.innerHTML = `<div class="suggest-empty">…</div>`;
+      const { ok, data } = await callSuggestions('admin_get_chat', { user_id: uid });
+      if (!ok) {
+        adminChatMessages.innerHTML = `<div class="suggest-empty">${t('alertNetworkError')}</div>`;
+        return;
+      }
+      const chat = data.chat;
+      adminChatTitle.textContent = chat ? (chat.username ? '@' + chat.username : (chat.first_name || uid)) : uid;
+      if (chat && chat.banned) {
+        adminChatBanner.style.display = 'block';
+        adminChatBanner.textContent = '⛔ Заблокирован';
+      } else if (chat && chat.muted_until && new Date(chat.muted_until).getTime() > Date.now()) {
+        adminChatBanner.style.display = 'block';
+        adminChatBanner.textContent = `🔇 Мут до ${fmtTime(chat.muted_until)}`;
+      } else {
+        adminChatBanner.style.display = 'none';
+      }
+      renderMessages(adminChatMessages, data.messages || [], 'admin');
+    }
+    function closeAdminChat() {
+      adminChatOverlay.classList.remove('open');
+      currentAdminChatId = null;
+    }
+
+    document.getElementById('adminListCloseBtn').addEventListener('click', () => adminListOverlay.classList.remove('open'));
+    document.getElementById('adminChatBackBtn').addEventListener('click', () => { closeAdminChat(); openAdminList(); });
+
+    async function sendAdminReply() {
+      const text = adminReplyInput.value.trim();
+      if (!text || !currentAdminChatId) return;
+      adminReplySendBtn.disabled = true;
+      const { ok } = await callSuggestions('admin_reply', { user_id: currentAdminChatId, text });
+      adminReplySendBtn.disabled = false;
+      if (!ok) {
+        if (tg && tg.showAlert) tg.showAlert(t('alertNetworkError')); else alert(t('alertNetworkError'));
+        return;
+      }
+      adminReplyInput.value = '';
+      openAdminChat(currentAdminChatId);
+    }
+    adminReplySendBtn.addEventListener('click', sendAdminReply);
+    adminReplyInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendAdminReply(); });
+
+    // ---------- меню действий админа (мут/бан/удалить) ----------
+    const adminMenuSheet = document.getElementById('adminMenuSheet');
+    const adminMenuBackdrop = document.getElementById('adminMenuBackdrop');
+
+    document.getElementById('adminMenuBtn').addEventListener('click', () => {
+      adminMenuSheet.classList.add('open');
+      adminMenuBackdrop.classList.add('open');
+    });
+    function closeAdminMenu() {
+      adminMenuSheet.classList.remove('open');
+      adminMenuBackdrop.classList.remove('open');
+    }
+    document.getElementById('adminMenuCloseBtn').addEventListener('click', closeAdminMenu);
+    adminMenuBackdrop.addEventListener('click', closeAdminMenu);
+
+    function showTgAlert(msg) {
+      if (tg && tg.showAlert) tg.showAlert(msg); else alert(msg);
+    }
+
+    document.querySelectorAll('.admin-menu-item[data-mute]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!currentAdminChatId) return;
+        const { ok } = await callSuggestions('admin_mute', { user_id: currentAdminChatId, hours: Number(btn.dataset.mute) });
+        closeAdminMenu();
+        if (!ok) { showTgAlert(t('alertNetworkError')); return; }
+        openAdminChat(currentAdminChatId);
+      });
+    });
+    document.getElementById('adminUnmuteBtn').addEventListener('click', async () => {
+      if (!currentAdminChatId) return;
+      const { ok } = await callSuggestions('admin_unmute', { user_id: currentAdminChatId });
+      closeAdminMenu();
+      if (!ok) { showTgAlert(t('alertNetworkError')); return; }
+      openAdminChat(currentAdminChatId);
+    });
+    document.getElementById('adminBanBtn').addEventListener('click', async () => {
+      if (!currentAdminChatId) return;
+      const { ok } = await callSuggestions('admin_ban', { user_id: currentAdminChatId });
+      closeAdminMenu();
+      if (!ok) { showTgAlert(t('alertNetworkError')); return; }
+      openAdminChat(currentAdminChatId);
+    });
+    document.getElementById('adminUnbanBtn').addEventListener('click', async () => {
+      if (!currentAdminChatId) return;
+      const { ok } = await callSuggestions('admin_unban', { user_id: currentAdminChatId });
+      closeAdminMenu();
+      if (!ok) { showTgAlert(t('alertNetworkError')); return; }
+      openAdminChat(currentAdminChatId);
+    });
+    document.getElementById('adminDeleteChatBtn').addEventListener('click', async () => {
+      if (!currentAdminChatId) return;
+      const confirmed = tg && tg.showConfirm
+        ? await new Promise(r => tg.showConfirm(t('suggestDeleteConfirm'), r))
+        : confirm(t('suggestDeleteConfirm'));
+      if (!confirmed) return;
+      const { ok } = await callSuggestions('admin_delete_chat', { user_id: currentAdminChatId });
+      closeAdminMenu();
+      if (!ok) { showTgAlert(t('alertNetworkError')); return; }
+      closeAdminChat();
+      openAdminList();
+    });
+
+    document.getElementById('openAdminListBtn').addEventListener('click', openAdminList);
+
+    // периодическая проверка непрочитанных (каждые 25 сек, пока открыт мини-апп)
+    setInterval(checkUnreadSuggest, 25000);
+  </script>
+</body>
+</html>

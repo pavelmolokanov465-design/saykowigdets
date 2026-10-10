@@ -1,0 +1,14 @@
+{
+  "name": "saykowidgets",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "netlify dev"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "sharp": "^0.33.5",
+    "telegraf": "^4.16.3",
+    "ws": "^8.18.0"
+  }
+}

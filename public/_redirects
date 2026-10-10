@@ -1,0 +1,8 @@
+/bot            /.netlify/functions/bot            200
+/api/favorite   /.netlify/functions/favorite        200
+/api/bot-info   /.netlify/functions/bot-info        200
+/api/file       /.netlify/functions/file             200
+/api/suggestions /.netlify/functions/suggestions      200
+/api/track-download /.netlify/functions/track-download 200
+/api/image     /.netlify/functions/image           200
+/api/check-ban /.netlify/functions/check-ban       200
